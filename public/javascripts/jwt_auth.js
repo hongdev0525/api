@@ -1,5 +1,6 @@
 const jwt = require("./jwt_util");
 
+//jwt 인증 미들웨어 : 엑세스 토큰이 여부확인후 재발급 혹은 로그아웃
 const authJWT = (req, res, next) => {
   if (req.body.access_token) {
     next();

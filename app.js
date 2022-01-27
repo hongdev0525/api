@@ -39,7 +39,7 @@ app.use(express.static(path.join(__dirname, "public")));
 //Set route
 app.use("/", indexRouter);
 app.use("/users", usersRouter);
-app.use("/login", jwtAuth, loginRouter);
+app.use("/login", loginRouter);
 app.use("/sms", smsRouter);
 app.use("/signin", signRouter);
 
