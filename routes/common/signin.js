@@ -2,13 +2,67 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const mariaDB = require("../../database/connect");
-const croptoJS = require("crypto-js");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const authPhone = require("../../public/javascripts/auth_phone");
 require("dotenv").config();
+
+const INQUIRY_SECRET = "12inquiryId%^89";
 
 router.get("/", (req, res, next) => {
   res.send("conneted");
 });
+
+router.post("/setNewpwd", (req, res, next) => {
+  const userId = req.body.userId;
+  let userPassword = req.body.userPassword;
+  mariaDB.query(
+    `SELECT UserSecretKey FROM UserMst WHERE UserId ="${userId}"`,
+    (err, rows) => {
+      console.log(bcrypt.compareSync(userPassword, rows[0].UserSecretKey));
+      if (!err) {
+        if (bcrypt.compareSync(userPassword, rows[0].UserSecretKey)) {
+          res.send({ status: "fail", duplicate: true });
+        } else {
+          const query = `UPDATE UserMst SET UserSecretKey = "${bcrypt.hashSync(
+            req.body.userPassword,
+            10
+          )}"`;
+          mariaDB.query(query, (err, rows) => {
+            if (!err) {
+              console.log(rows);
+              res.send({ status: "success" });
+            } else {
+              res.send({ status: "fail" });
+              console.log(err);
+            }
+          });
+        }
+      } else {
+        console.log("password not found");
+      }
+    }
+  );
+});
+
+router.get("/idCheck", (req, res, next) => {
+  mariaDB.query(
+    `SELECT UserID FROM UserMst where UserID = "${req.query.userId}"`,
+    (err, rows) => {
+      if (!err) {
+        console.log(rows);
+        if (rows.length !== 0) {
+          res.status(200).send({ status: "success " });
+        } else {
+          res.send({ status: "fail", message: "not exist" });
+        }
+      } else {
+        console.log(err);
+      }
+    }
+  );
+});
+
 router.get("/id", (req, res, next) => {
   mariaDB.query(
     `SELECT UserNo FROM UserMst where UserID = "${req.query.userId}"`,
@@ -27,70 +81,60 @@ router.get("/id", (req, res, next) => {
   );
 });
 
+router.post("/idInquiry", (req, res, next) => {
+  const inquiryToken = req.body.inquiryToken;
+  if (jwt.verify(inquiryToken, INQUIRY_SECRET)) {
+    console.log(req.body.userName, req.body.userPhone);
+    mariaDB.query(
+      `SELECT UserID FROM UserMst WHERE UserName = "${req.body
+        .userName}" AND UserPhone = "${req.body.userPhone}"`,
+      (err, rows) => {
+        if (!err) {
+          if (rows.length !== 0) {
+            console.log(rows[0].UserID);
+            res.status(200).send({ status: "success", id: rows[0].UserID });
+          } else {
+            res.send({ status: "fail", message: "not exist" });
+          }
+        } else {
+          console.log(err);
+        }
+      }
+    );
+  } else {
+    res.send({ status: "fail", message: "invaild inquiry token" });
+  }
+});
+
 router.post("/phone", (req, res, next) => {
   mariaDB.query(
-    `SELECT UserNo from UserMst WHERE UserPhone = "${req.body.userPhone}" `,
-    async (err, rows) => {
+    `SELECT * from UserMst WHERE UserPhone = "${req.body.userPhone}" `,
+    (err, rows) => {
       if (!err) {
-        if (rows.length === 0) {
-          const userPhoneNumber = req.body.userPhone;
-          const userName = req.body.userName;
-          const authNumber = Math.floor(Math.random() * 899999 + 100000);
-          const DATE = Date.now().toString();
-          const SERVICE_ID = process.env.SENS_SMS_SERVICE_ID;
-          const SECRET_KEY = process.env.NCP_SECRET_KEY;
-          const ACCESS_KEY = process.env.NCP_ACCESS_KEY;
-          const METHOD = "POST";
-          const SPACE = " ";
-          const NEWLINE = "\n";
-          const url = `https://sens.apigw.ntruss.com/sms/v2/services/${SERVICE_ID}/messages`;
-          const url2 = `/sms/v2/services/${SERVICE_ID}/messages`;
-          const hmac = croptoJS.algo.HMAC.create(
-            croptoJS.algo.SHA256,
-            SECRET_KEY
-          );
-
-          hmac.update(METHOD);
-          hmac.update(SPACE);
-          hmac.update(url2);
-          hmac.update(NEWLINE);
-          hmac.update(DATE);
-          hmac.update(NEWLINE);
-          hmac.update(ACCESS_KEY);
-          const hash = hmac.finalize();
-          const signature = hash.toString(croptoJS.enc.Base64);
-          await axios({
-            method: METHOD,
-            url: url,
-            headers: {
-              "Contenc-type": "application/json; charset=utf-8",
-              "x-ncp-apigw-timestamp": DATE,
-              "x-ncp-iam-access-key": ACCESS_KEY,
-              "x-ncp-apigw-signature-v2": signature
-            },
-            data: {
-              type: "SMS",
-              countryCode: "82",
-              subject: "큐잇 회원가입",
-              content: `[큐잇 회원가입]${userName}님 인증번호는 [${authNumber}]를 입력해주세요.`,
-              from: "07041666077",
-              messages: [
+        const userPhoneNumber = req.body.userPhone;
+        const userName = req.body.userName;
+        authPhone(userPhoneNumber, userName)
+          .then(respones => {
+            res.send({
+              status: "success",
+              authNumber: respones,
+              inquiryToken: jwt.sign(
                 {
-                  to: userPhoneNumber
+                  id: userName,
+                  role: userPhoneNumber
+                },
+                INQUIRY_SECRET,
+                {
+                  algorithm: "HS256",
+                  expiresIn: "5M"
                 }
-              ]
-            }
-          })
-            .then(respones => {
-              res.send({ status: "success", authNumber: authNumber });
-            })
-            .catch(err => {
-              console.log("err", err);
-              res.send(err);
+              )
             });
-        } else {
-          res.send({ status: "fail", error: "already exist" });
-        }
+          })
+          .catch(err => {
+            console.log("err", err);
+            res.send(err);
+          });
       } else {
         res.send({ status: "fail", error: "query error" });
       }
