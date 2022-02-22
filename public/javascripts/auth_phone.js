@@ -30,7 +30,7 @@ const authPhone = async (userPhoneNumber, userName) => {
       "Contenc-type": "application/json; charset=utf-8",
       "x-ncp-apigw-timestamp": DATE,
       "x-ncp-iam-access-key": ACCESS_KEY,
-      "x-ncp-apigw-signature-v2": signature
+      "x-ncp-apigw-signature-v2": signature,
     },
     data: {
       type: "SMS",
@@ -40,10 +40,10 @@ const authPhone = async (userPhoneNumber, userName) => {
       from: "07041666077",
       messages: [
         {
-          to: userPhoneNumber
-        }
-      ]
-    }
+          to: userPhoneNumber,
+        },
+      ],
+    },
   });
   return authNumber;
 };

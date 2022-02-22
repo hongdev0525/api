@@ -1,19 +1,18 @@
 const jwt = require("jsonwebtoken");
-
 const secret = "@!cueat2356";
 
 module.exports = {
-  sign: user => {
+  sign: (user) => {
     const payload = {
       id: user.id,
-      role: user.role
+      role: user.role,
     };
     return jwt.sign(payload, secret, {
       algorithm: "HS256",
-      expiresIn: "10S"
+      expiresIn: "10S",
     });
   },
-  verify: token => {
+  verify: (token) => {
     let decoded = null;
     try {
       decoded = jwt.verify(token, secret);
@@ -21,39 +20,39 @@ module.exports = {
         status: "success",
         message: "verified",
         id: decoded.id,
-        role: decoded.role
+        role: decoded.role,
       };
     } catch (err) {
       return {
         status: "fail",
-        message: err.message
+        message: err.message,
       };
     }
   },
-  destroy: token => {
+  destroy: (token) => {
     try {
       jwt.destroy(token);
     } catch (err) {
       return {
         status: "fail",
-        message: err.message
+        message: err.message,
       };
     }
   },
-  refresh: user => {
+  refresh: (user) => {
     const payload = {
       id: user.id,
-      role: user.role
+      role: user.role,
     };
     try {
       return jwt.sign(payload, secret, {
         algorithm: "HS256",
-        expiresIn: "14D"
+        expiresIn: "14D",
       });
     } catch (err) {
       return {
         status: "fail",
-        message: err.message
+        message: err.message,
       };
     }
   },
@@ -74,5 +73,5 @@ module.exports = {
     } catch (err) {
       return false;
     }
-  }
+  },
 };
