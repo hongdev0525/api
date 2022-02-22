@@ -9,6 +9,7 @@ const usersRouter = require("./routes/users");
 const loginRouter = require("./routes/common/login");
 const smsRouter = require("./routes/common/sms");
 const signRouter = require("./routes/common/signin");
+const paymentRouter = require("./routes/common/payment");
 const jwtAuth = require("./public/javascripts/jwt_auth");
 const mariaDB = require("./database/connect");
 const app = express();
@@ -42,6 +43,7 @@ app.use("/users", usersRouter);
 app.use("/login", loginRouter);
 app.use("/sms", smsRouter);
 app.use("/signin", signRouter);
+app.use("/payment", paymentRouter);
 
 //enable pre-flight across-the-board
 // app.options("*", cors());

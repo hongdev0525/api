@@ -27,14 +27,12 @@ router.post("/setNewpwd", (req, res, next) => {
           const query = `UPDATE UserMst SET UserSecretKey = "${bcrypt.hashSync(
             req.body.userPassword,
             10
-          )}"`;
+          )}" WHERE UserId = "${userId}"`;
           mariaDB.query(query, (err, rows) => {
             if (!err) {
-              console.log(rows);
               res.send({ status: "success" });
             } else {
               res.send({ status: "fail" });
-              console.log(err);
             }
           });
         }
